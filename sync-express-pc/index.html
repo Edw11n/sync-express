@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Sync Express PC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #121212; color: #ffffff; overflow: hidden; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e1e1e; }
+        ::-webkit-scrollbar-thumb { background: #34495e; border-radius: 10px; }
+
+        .clip-card { background-color: #1e1e1e; transition: all 0.2s; border: 1px solid #2d2d2d; }
+        .clip-card:hover { background-color: #252525; border-color: #3498db; }
+
+        .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333; transition: .3s; border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #3498db; }
+        input:checked + .slider:before { transform: translateX(14px); }
+    </style>
+</head>
+<body class="pb-2 p-5 flex flex-col h-screen relative">
+
+    <button onclick="toggleConfigMenu()" class="absolute top-5 right-5 text-gray-500 hover:text-white transition-colors p-1 text-lg z-50">
+        <i class="fa-solid fa-gear"></i>
+    </button>
+
+    <div id="config-menu" class="hidden absolute inset-0 bg-[#121212]/95 z-40 p-6 flex flex-col justify-between">
+        <div>
+            <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
+                <h2 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Configuración</h2>
+                <button onclick="toggleConfigMenu()" class="text-gray-500 hover:text-red-400 text-sm">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-5 text-xs text-gray-400">
+                <div class="flex justify-between items-center">
+                    <span>Siempre visible (Always on Top)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="alwaysTopCheck">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span>Iniciar con Windows</span>
+                    <label class="switch">
+                        <input type="checkbox" id="autoLaunchCheck">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-300 font-medium">Enviar automáticamente al copiar</span>
+                    <label class="switch">
+                        <input type="checkbox" id="autoSendCheck">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            </div>
+              <p class="text-[10px] text-gray-600 text-center uppercase">Ajustes del Sistema - Sync Express</p>
+              <p class="text-[10px] text-gray-600 text-center uppercase"><a href="https://github.com/Edw11n" target="_blank" class="text-blue-400 hover:underline">github.com/Edw11n</a> | <a href="https://tiktok.com/@awatuki_" target="_blank" class="text-blue-400 hover:underline">tiktok.com/@awatuki_</a></p>
+            </div>
+
+    <header class="text-center mb-4">
+        <img src="icon.png" alt="Logo" class="w-12 h-12 mx-auto mb-1 object-contain">
+        <div class="flex items-center justify-center gap-2">
+            <div id="status-dot" class="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+            <span id="status-text" class="text-xs font-semibold text-gray-400">Desconectado</span>
+        </div>
+    </header>
+
+    <button id="btnSendManual" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-xs mb-4 shadow-md transition-all active:scale-[0.98]">
+        Enviar mi Portapapeles
+    </button>
+
+    <div class="flex justify-between items-center mb-2">
+        <p class="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Historial de Clips (Máx. 20)</p>
+        <button onclick="refreshHistory(true)" class="text-[9px] bg-gray-800 hover:bg-gray-700 text-blue-400 px-2 py-0.5 rounded border border-gray-700 transition-colors font-bold">
+            ↻ Actualizar
+        </button>
+    </div>
+
+    <div id="history-list" class="flex-1 overflow-y-auto pr-1 space-y-2">
+        <p id="placeholder-text" class="text-gray-600 italic text-center mt-10 text-xs">Esperando sincronización...</p>
+    </div>
+
+    <footer class="mt-2 pt-2 border-t border-gray-800 text-center">
+        <p class="text-[9px] text-gray-600 uppercase">v1.0.0 - <a href="https://github.com/Edw11n" target="_blank" class="text-blue-400 hover:underline">github.com/Edw11n</a> | <a href="https://tiktok.com/awatuki" target="_blank" class="text-blue-400 hover:underline">tiktok.com/awatuki</a></p>
+    </footer>
+
+<script>
+        const historyList = document.getElementById('history-list');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const configMenu = document.getElementById('config-menu');
+
+        let localHistoryArray = [];
+
+        function toggleConfigMenu() { configMenu.classList.toggle('hidden'); }
+
+        function formatSmartDate(timestamp) {
+            if (!timestamp) return "Formato antiguo";
+            const date = new Date(timestamp);
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const diffDays = Math.floor((today - itemDate) / (1000 * 60 * 60 * 24));
+            const timeStr = `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+
+            if (diffDays === 0) return `Hoy, ${timeStr}`;
+            if (diffDays === 1) return `Ayer, ${timeStr}`;
+            return `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}, ${timeStr}`;
+        }
+
+        function renderUIHistory() {
+            historyList.innerHTML = '';
+            if (localHistoryArray.length === 0) {
+                historyList.innerHTML = '<p id="placeholder-text" class="text-gray-600 italic text-center mt-10 text-xs">No hay clips guardados.</p>';
+                return;
+            }
+
+            localHistoryArray.forEach(item => {
+                const textContent = item.text || item;
+                const timeContent = item.timestamp || null;
+                const isPending = item.pending === true;
+                const origin = item.origin || "pc"; // 'pc' o 'mobile'
+
+                if (!textContent || textContent.trim() === "" || textContent.includes('id="history-list"')) return;
+
+                const div = document.createElement('div');
+                div.className = 'clip-card p-3 rounded-lg flex justify-between items-center shadow-sm mb-2';
+
+                const safeTextBase64 = btoa(unescape(encodeURIComponent(textContent)));
+
+                // Icono direccional basado en el origen
+                const directionIcon = origin === "mobile"
+                    ? '<i class="fa-solid fa-arrow-right text-blue-500 mr-1 text-[9px]" title="Recibido del Móvil"></i>'
+                    : '<i class="fa-solid fa-arrow-left text-green-500 mr-1 text-[9px]" title="Enviado desde PC"></i>';
+
+                div.innerHTML = `
+                    <div class="flex-1 min-w-0 pr-3">
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                            ${directionIcon}
+                            <p class="text-[10px] text-gray-500 font-semibold">${formatSmartDate(timeContent)}</p>
+                            ${isPending ? '<span class="text-[8px] bg-yellow-950/60 text-yellow-500 px-1 border border-yellow-700/40 rounded font-bold uppercase">Pendiente</span>' : ''}
+                        </div>
+                        <p class="text-xs truncate text-gray-200">${textContent}</p>
+                    </div>
+                    <button onclick="copyTextFromUI('${safeTextBase64}')" class="w-8 h-8 rounded-full bg-[#1c2833] border border-[#2c3e50] flex items-center justify-center text-blue-400 hover:bg-[#2c3e50] transition-all active:scale-90 shrink-0">
+                        <i class="fa-regular fa-copy text-xs"></i>
+                    </button>
+                `;
+                historyList.appendChild(div);
+            });
+        }
+
+        window.copyTextFromUI = (base64Text) => {
+            const decodedText = decodeURIComponent(escape(atob(base64Text)));
+            if (window.electronAPI) window.electronAPI.writeToClipboard(decodedText);
+        };
+
+        // El parámetro forceShow controla si se muestra el aviso visual de cargando
+async function refreshHistory(forceShow = false) {
+            if (forceShow) {
+                historyList.innerHTML = '<p id="placeholder-text" class="text-gray-600 italic text-center mt-5 text-xs">Actualizando...</p>';
+            }
+            const history = await window.electronAPI.getHistory();
+            const rawHistory = history || [];
+
+            // FILTRADO DE DUPLICADOS EN TIEMPO REAL:
+            // Recorremos los datos de atras hacia adelante para que los estados procesados
+            // validos (pending: false) pisen a las versiones obsoletas marcadas como pendientes.
+            const cleanMap = new Map();
+
+            for (let i = rawHistory.length - 1; i >= 0; i--) {
+                const item = rawHistory[i];
+                const textKey = item.text || item;
+
+                if (cleanMap.has(textKey)) {
+                    // Si el elemento existente esta pendiente pero el nuevo no, lo reemplaza
+                    const existing = cleanMap.get(textKey);
+                    if (existing.pending && !item.pending) {
+                        cleanMap.set(textKey, item);
+                    }
+                } else {
+                    cleanMap.set(textKey, item);
+                }
+            }
+
+            // Convertimos el mapa limpio de nuevo a un array estructurado y lo ordenamos por fecha decreciente
+            localHistoryArray = Array.from(cleanMap.values()).sort((a, b) => {
+                return (b.timestamp || 0) - (a.timestamp || 0);
+            });
+
+            renderUIHistory();
+        }
+
+        // Cargar configuración e historial inicial persistido al encender la ventana
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (window.electronAPI && window.electronAPI.getAppConfig) {
+                const config = await window.electronAPI.getAppConfig();
+                document.getElementById("alwaysTopCheck").checked = config.alwaysOnTop;
+                document.getElementById("autoLaunchCheck").checked = config.autoLaunch;
+                document.getElementById("autoSendCheck").checked = config.autoSend;
+            }
+            refreshHistory(false); // Silencioso al inicio
+        });
+
+        window.electronAPI.onNewClip((item) => {
+            const textToCheck = item.text || item;
+            if (localHistoryArray.length > 0 && (localHistoryArray[0].text === textToCheck)) {
+                localHistoryArray[0].pending = item.pending;
+                renderUIHistory();
+                return;
+            }
+            localHistoryArray.unshift(item);
+            renderUIHistory();
+        });
+
+        window.electronAPI.onStatusChanged((status) => {
+            if (status === "online") {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-green-500";
+                statusText.innerText = 'En línea';
+                statusText.className = "text-xs font-semibold text-green-400";
+            } else if (status === "waiting") {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-yellow-500";
+                statusText.innerText = 'En espera';
+                statusText.className = "text-xs font-semibold text-yellow-500";
+            } else {
+                statusDot.className = "w-2.5 h-2.5 rounded-full bg-red-500";
+                statusText.innerText = 'Desconectado';
+                statusText.className = "text-xs font-semibold text-red-400";
+            }
+
+            // Forzar recarga limpia del historial de la base de datos en la interfaz
+            // despues de procesar el cambio de red.
+            refreshHistory(false);
+        });
+
+        // --- ENLACES DE CONTROLADORES ---
+        document.getElementById("alwaysTopCheck").addEventListener("change", (e) => {
+            if (window.electronAPI) window.electronAPI.toggleAlwaysOnTop(e.target.checked);
+        });
+        document.getElementById("autoLaunchCheck").addEventListener("change", (e) => {
+            if (window.electronAPI) window.electronAPI.toggleAutoLaunch(e.target.checked);
+        });
+        document.getElementById("autoSendCheck").addEventListener("change", (e) => {
+            if (window.electronAPI) window.electronAPI.toggleAutoSend(e.target.checked);
+        });
+
+        document.getElementById("btnSendManual").addEventListener("click", async () => {
+            let text = await window.electronAPI.readClipboard();
+            if (text && text.trim() !== "") {
+                if (window.electronAPI) window.electronAPI.manualSendClipboard(text);
+            }
+        });
+    </script>
+</body>
+</html>

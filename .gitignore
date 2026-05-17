@@ -1,0 +1,17 @@
+# Dependencias pesadas (el doble asterisco busca en cualquier subcarpeta)
+**/node_modules/
+
+# Carpetas de compilación y empaquetado
+**/dist/
+**/.expo/
+
+# Archivos de configuración local y entorno (¡Seguridad!)
+**/.env
+**/.env.local
+
+# Configuración personal de tu editor de código
+**/.vscode/
+
+# Archivos basura del sistema operativo
+**/.DS_Store
+**/Thumbs.db

@@ -1,0 +1,63 @@
+{
+	"expo": {
+		"name": "Sync Express",
+		"slug": "sync-express-android",
+		"version": "1.0.0",
+		"plugins": [
+			[
+				"expo-build-properties",
+				{
+					"android": {
+						"usesCleartextTraffic": true
+					}
+				}
+			],
+			"expo-router",
+			[
+				"expo-splash-screen",
+				{
+					"image": "./icon.png",
+					"imageWidth": 200,
+					"resizeMode": "contain",
+					"backgroundColor": "#121212"
+				}
+			]
+		],
+		"orientation": "portrait",
+		"icon": "./icon.png",
+		"scheme": "syncexpressandroid",
+		"userInterfaceStyle": "automatic",
+		"newArchEnabled": true,
+		"ios": {
+			"supportsTablet": true
+		},
+		"android": {
+			"package": "com.awatuki.syncexpressandroid",
+			"permissions": [
+				"INTERNET",
+				"ACCESS_NETWORK_STATE",
+				"ACCESS_WIFI_STATE",
+				"CHANGE_WIFI_MULTICAST_STATE"
+			],
+			"adaptiveIcon": {
+				"foregroundImage": "./icon.png",
+				"backgroundColor": "#121212"
+			},
+			"edgeToEdgeEnabled": true
+		},
+		"web": {
+			"output": "static",
+			"favicon": "./icon.png"
+		},
+		"experiments": {
+			"typedRoutes": true,
+			"reactCompiler": true
+		},
+		"extra": {
+			"router": {},
+			"eas": {
+				"projectId": "d0a3707f-fdf9-484f-a1d1-c597a1b69af7"
+			}
+		}
+	}
+}
